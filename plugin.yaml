@@ -1,0 +1,19 @@
+name: shared-vault
+version: 0.1.0
+description: >-
+  Recall relevant Markdown/Obsidian vault sections before every turn. Hybrid
+  keyword+embedding retrieval, fully local (loopback embeddings endpoint),
+  stdlib-only, graceful lexical-only fallback. Read-only by default; optional
+  MCP tools can write notes.
+provides_hooks:
+  - pre_llm_call
+license: MIT
+author: mcheng916
+homepage: https://github.com/mcheng916/hermes-shared-vault
+requires_hermes: ">=0.22.0"
+config_schema:
+  vault_path: {type: str, default: "", description: "Absolute path to your Markdown/Obsidian vault. Empty disables retrieval."}
+  roots: {type: str, default: "", description: "Comma-separated top-level folders to index. Empty = every visible top-level folder."}
+  embed_url: {type: str, default: "", description: "Optional local embeddings endpoint, e.g. http://127.0.0.1:11434/api/embed (Ollama) or .../v1/embeddings (OpenAI-compatible). Empty = lexical-only retrieval."}
+  embed_model: {type: str, default: "bge-m3:latest", description: "Embedding model name served at embed_url (default bge-m3:latest, multilingual)."}
+  aliases_path: {type: str, default: "", description: "Optional JSON file mapping query terms to expansion words, e.g. {\"nickname\": \"full name words\"}."}
