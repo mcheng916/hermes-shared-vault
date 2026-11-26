@@ -1,5 +1,5 @@
 name: shared-vault
-version: 0.1.0
+version: 0.1.1
 description: >-
   Recall relevant Markdown/Obsidian vault sections before every turn. Hybrid
   keyword+embedding retrieval, fully local (loopback embeddings endpoint),
@@ -17,3 +17,6 @@ config_schema:
   embed_url: {type: str, default: "", description: "Optional local embeddings endpoint, e.g. http://127.0.0.1:11434/api/embed (Ollama) or .../v1/embeddings (OpenAI-compatible). Empty = lexical-only retrieval."}
   embed_model: {type: str, default: "bge-m3:latest", description: "Embedding model name served at embed_url (default bge-m3:latest, multilingual)."}
   aliases_path: {type: str, default: "", description: "Optional JSON file mapping query terms to expansion words, e.g. {\"nickname\": \"full name words\"}."}
+  rrf_k: {type: str, default: "60", description: "Reciprocal-rank-fusion constant blending keyword and embedding rankings. Higher = both lists weighted more evenly; lower = each list's top hits dominate more."}
+  min_similarity: {type: str, default: "0.38", description: "Minimum cosine similarity (0-1) for an embedding hit to count. Raise for precision (less noise), lower for recall (more, weaker matches)."}
+  hook_limit: {type: str, default: "2", description: "Maximum number of note excerpts injected before each turn (1-8). Raise for more context per turn, lower for a smaller prompt."}

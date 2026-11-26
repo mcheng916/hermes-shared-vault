@@ -46,6 +46,8 @@ def serve(v):
         if not isinstance(text, str) or len(text) > 20000:
             raise ValueError('invalid query')
         limit = int(req.get('limit', 4)); max_chars = int(req.get('max_chars', 6000))
+        for k, val in (req.get('tune') or {}).items():
+            if val: os.environ[k] = str(val)  # call-time tunables from the hook
         result = v.query(text, limit=limit, max_chars=max_chars)
         hook = req.get('hook', '')
         if hook == 'claude-hook':

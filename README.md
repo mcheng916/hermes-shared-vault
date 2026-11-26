@@ -54,9 +54,16 @@ An empty `vault_path` disables retrieval entirely, so installing is always safe.
 | `embed_url`    | *(empty → no hybrid in hook)* | Local embeddings endpoint. Ollama: `http://127.0.0.1:11434/api/embed`; OpenAI-compatible: `.../v1/embeddings`. Both response shapes are accepted. Keep it on loopback. |
 | `embed_model`  | `bge-m3:latest` | Model name served at `embed_url` (multilingual). |
 | `aliases_path` | *(empty)* | Optional JSON object mapping query terms to expansion words, e.g. `{"nickname": "full name words"}` — useful for names your notes use differently than you type. |
+| `rrf_k`        | `60` | Reciprocal-rank-fusion constant that blends the keyword and embedding rankings. Higher = the two lists weighted more evenly; lower = each list's own top hits dominate more. Rarely needs changing. |
+| `min_similarity` | `0.38` | Minimum cosine similarity (0–1) for an embedding hit to count. Raise for precision (less noise), lower for recall (more, weaker matches). |
+| `hook_limit`   | `2` | Maximum number of note excerpts injected before each turn (1–8). Raise for more context per turn, lower for a smaller prompt. |
 
 CLI/env equivalents: `SHARED_VAULT_ROOT`, `SHARED_VAULT_ROOTS`,
-`SHARED_VAULT_EMBED_URL`, `SHARED_VAULT_EMBED_MODEL`, `SHARED_VAULT_ALIASES`.
+`SHARED_VAULT_EMBED_URL`, `SHARED_VAULT_EMBED_MODEL`, `SHARED_VAULT_ALIASES`,
+`SHARED_VAULT_RRF_K`, `SHARED_VAULT_MIN_SIMILARITY`, `SHARED_VAULT_HOOK_LIMIT`.
+`rrf_k`/`min_similarity` are applied per query (a running daemon honours changes
+immediately); `embed_url`/`embed_model` also take effect on the next query, so no
+re-indexing is needed after any of these.
 
 ## Enabling hybrid retrieval
 

@@ -3,7 +3,8 @@
 A pre_llm_call hook runs vault retrieval as a subprocess so a slow or broken
 index can never block a user turn (5s budget, silent skip on trouble).
 All configuration comes from plugin settings (plugins.entries.shared-vault.settings):
-vault_path, roots, embed_url, embed_model, aliases_path -- see README.md.
+vault_path, roots, embed_url, embed_model, aliases_path, rrf_k, min_similarity,
+hook_limit -- see README.md.
 """
 import json
 import os
@@ -31,7 +32,10 @@ def register(ctx):
         for key, var in (('roots', 'SHARED_VAULT_ROOTS'),
                          ('embed_url', 'SHARED_VAULT_EMBED_URL'),
                          ('embed_model', 'SHARED_VAULT_EMBED_MODEL'),
-                         ('aliases_path', 'SHARED_VAULT_ALIASES')):
+                         ('aliases_path', 'SHARED_VAULT_ALIASES'),
+                         ('rrf_k', 'SHARED_VAULT_RRF_K'),
+                         ('min_similarity', 'SHARED_VAULT_MIN_SIMILARITY'),
+                         ('hook_limit', 'SHARED_VAULT_HOOK_LIMIT')):
             value = setting(key)
             if value:
                 env[var] = value

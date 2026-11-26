@@ -8,8 +8,14 @@ MODEL = os.environ.get('SHARED_VAULT_EMBED_MODEL', 'bge-m3:latest')
 # embeddings live on a dedicated Ollama instance (so they never evict the chat model).
 URL = os.environ.get('SHARED_VAULT_EMBED_URL', 'http://127.0.0.1:11434/api/embed')
 
+def tunable(name, default):
+    # Read at call time so a hook request's 'tune' overrides take effect per query.
+    try: return float(os.environ.get(name) or default)
+    except ValueError: return float(default)
+
 def embed(texts, timeout=30):
-    req = urllib.request.Request(URL, data=json.dumps({'model': MODEL, 'input': texts,
+    req = urllib.request.Request(os.environ.get('SHARED_VAULT_EMBED_URL') or URL,
+        data=json.dumps({'model': os.environ.get('SHARED_VAULT_EMBED_MODEL') or MODEL, 'input': texts,
         'truncate': True, 'keep_alive': '5m'}).encode(), headers={'Content-Type':'application/json'})
     # Ignore proxy settings: the only permitted embedding destination is loopback.
     with urllib.request.build_opener(urllib.request.ProxyHandler({})).open(req, timeout=timeout) as r:
@@ -67,6 +73,7 @@ def build(v):
 _matrix_cache = {}  # persistent-daemon: keep vectors in RAM across queries; key = dbfile mtime
 
 def search(v, query, scope, limit):
+    min_sim = tunable('SHARED_VAULT_MIN_SIMILARITY', 0.38)
     dbfile=v.cache/'vectors.sqlite3'
     if not dbfile.exists(): return [], 'not_indexed'
     try:
@@ -103,7 +110,7 @@ def search(v, query, scope, limit):
         denom = np.linalg.norm(qv) * np.linalg.norm(mat, axis=1)
         scores = (mat @ qv) / np.where(denom == 0, 1, denom)
         top = np.argsort(-scores)[:limit * 3 * 4]
-        scored = [(float(scores[i]), *records[i][:5]) for i in top if scores[i] >= 0.38]
+        scored = [(float(scores[i]), *records[i][:5]) for i in top if scores[i] >= min_sim]
     else:
         norm = math.sqrt(sum(x*x for x in q)); scored=[]
         for path,sha,start,end,heading,blob in records:
@@ -111,7 +118,7 @@ def search(v, query, scope, limit):
             if len(vec)!=len(q): continue
             denom=norm*math.sqrt(sum(x*x for x in vec))
             score=sum(a*b for a,b in zip(q,vec))/denom if denom else 0
-            if score>=0.38: scored.append((score,path,sha,start,end,heading))
+            if score>=min_sim: scored.append((score,path,sha,start,end,heading))
     scored.sort(reverse=True); results=[]
     for score,path,sha,start,end,heading in scored[:limit*3]:
         # Read through the existing path and freshness guards.
@@ -125,6 +132,7 @@ def search(v, query, scope, limit):
 def enable(cls):
     lexical=cls.query
     def query(self,query,scope=None,limit=4,max_chars=6000):
+        rrf_k=tunable('SHARED_VAULT_RRF_K',60)
         limit=max(1,min(int(limit),8));max_chars=max(500,min(int(max_chars),16000))
         result=lexical(self,query,scope,8,16000)
         try: semantic,status=search(self,query,scope,8)
@@ -134,7 +142,7 @@ def enable(cls):
         for hits in (result['results'],semantic):
             for rank,item in enumerate(hits):
                 key=(item['path'],item.get('section_start',item['start']))
-                ranks[key]=ranks.get(key,0)+1/(60+rank+1);items.setdefault(key,item)
+                ranks[key]=ranks.get(key,0)+1/(rrf_k+rank+1);items.setdefault(key,item)
         output=[]; used=0
         for key in sorted(ranks,key=lambda k:-ranks[k]):
             item=dict(items[key]);budget=min(3000,max_chars-used)
