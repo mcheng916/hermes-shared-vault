@@ -46,9 +46,16 @@ def serve(v):
         if not isinstance(text, str) or len(text) > 20000:
             raise ValueError('invalid query')
         limit = int(req.get('limit', 4)); max_chars = int(req.get('max_chars', 6000))
-        for k, val in (req.get('tune') or {}).items():
-            if val: os.environ[k] = str(val)  # call-time tunables from the hook
-        result = v.query(text, limit=limit, max_chars=max_chars)
+        tune = req.get('tune') or {}
+        saved = {k: os.environ.get(k) for k in tune}  # per-query tunables, restored after
+        for k, val in tune.items():
+            if val: os.environ[k] = str(val)
+        try:
+            result = v.query(text, limit=limit, max_chars=max_chars)
+        finally:
+            for k, prev in saved.items():
+                if prev is None: os.environ.pop(k, None)
+                else: os.environ[k] = prev
         hook = req.get('hook', '')
         if hook == 'claude-hook':
             # Same inbox-staleness filter the CLI hook applies.
@@ -114,7 +121,14 @@ def serve(v):
                     except Exception as e:
                         payload = {'ok': False, 'error': type(e).__name__ + ': ' + str(e)[:200]}
                     try:
-                        conn.sendall(json.dumps(payload, ensure_ascii=False).encode() + b'\n')
+                        blob = json.dumps(payload, ensure_ascii=False).encode() + b'\n'
+                        while blob:  # non-blocking conn: drain past the socket buffer
+                            try:
+                                n = conn.send(blob)
+                            except BlockingIOError:
+                                time.sleep(0.005)
+                            else:
+                                blob = blob[n:]
                     except OSError:
                         pass
     finally:

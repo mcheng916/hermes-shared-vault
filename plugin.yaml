@@ -1,5 +1,5 @@
 name: shared-vault
-version: 0.1.1
+version: 0.1.2
 description: >-
   Recall relevant Markdown/Obsidian vault sections before every turn. Hybrid
   keyword+embedding retrieval, fully local (loopback embeddings endpoint),
